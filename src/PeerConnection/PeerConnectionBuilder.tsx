@@ -6,6 +6,12 @@ interface host {
     hostname: string,
     port: number
 }
+
+/**
+ * sets up the required event callbacks to establish the connection
+ * @param eventSocket the signaling channel to setup the callbacks with
+ * @param peerConnection 
+ */
 function handleNegotiation(eventSocket:EventSocket, peerConnection:RTCPeerConnection){
     eventSocket.onEvent("sdp_offer", function(desc: string){
 
@@ -77,9 +83,8 @@ function createPeerConnection(eventSocket: EventSocket, streamVideo:React.Mutabl
         handleIceCandidate(eventSocket, peerConnection, event);
     };
 
-    peerConnection.onnegotiationneeded = function(event:Event){
-            handleNegotiation(eventSocket, peerConnection);
-    }
+
+    handleNegotiation(eventSocket, peerConnection);
 
     return peerConnection;
 }
@@ -89,7 +94,9 @@ function createPeerConnection(eventSocket: EventSocket, streamVideo:React.Mutabl
  * @param streamVideo the video object on to which the stream will be attached
  * @param host the host details object
  */
-function establish(streamVideo:React.MutableRefObject<HTMLVideoElement>, host:host){
+function establish( pc:React.MutableRefObject<RTCPeerConnection|undefined>,
+                    streamVideo:React.MutableRefObject<HTMLVideoElement>, 
+                    host:host ) {
 
     var webSocket: WebSocket = new WebSocket("ws://" + host.hostname + ":" + host.port);
 
@@ -98,8 +105,7 @@ function establish(streamVideo:React.MutableRefObject<HTMLVideoElement>, host:ho
         function(payload: string){
             console.log(payload);
         });
-
-        const peerConnection = createPeerConnection(eventSocket, streamVideo);
+        pc.current = createPeerConnection(eventSocket, streamVideo);
     };
 }
 
@@ -109,9 +115,10 @@ function establish(streamVideo:React.MutableRefObject<HTMLVideoElement>, host:ho
  */
 const PeerConnectionBuilder = (props:host) => {
     const streamVideo = useRef(document.createElement('video'));
-    
+    const peerConnection = useRef<RTCPeerConnection>();
+
     useEffect(() => {
-        establish(streamVideo, props);
+        establish(peerConnection, streamVideo, props);
     });
 
     return (<div>
